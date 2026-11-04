@@ -7,11 +7,22 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
 
+def sanitize(text: str) -> str:
+    if not text:
+        return ""
+    text = text.replace("₹", "Rs. ")
+    text = text.replace("–", "-")
+    text = text.replace("—", "--")
+    text = text.replace("✓", "[PASS]")
+    text = text.replace("λ", "lambda")
+    text = text.replace("→", "->")
+    return text
+
 def set_cell_background(cell, hex_color):
     shading_elm = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{hex_color}"/>')
     cell._tc.get_or_add_tcPr().append(shading_elm)
 
-def set_cell_margins(cell, top=100, bottom=100, left=150, right=150):
+def set_cell_margins(cell, top=80, bottom=80, left=100, right=100):
     tcPr = cell._tc.get_or_add_tcPr()
     tcMar = OxmlElement('w:tcMar')
     for m, val in [('top', top), ('bottom', bottom), ('left', left), ('right', right)]:
@@ -27,10 +38,10 @@ def create_document():
     # Set page margins
     sections = doc.sections
     for section in sections:
-        section.top_margin = Inches(0.8)
-        section.bottom_margin = Inches(0.8)
-        section.left_margin = Inches(0.8)
-        section.right_margin = Inches(0.8)
+        section.top_margin = Inches(0.7)
+        section.bottom_margin = Inches(0.7)
+        section.left_margin = Inches(0.7)
+        section.right_margin = Inches(0.7)
 
     # Styles
     terracotta_rgb = RGBColor(217, 83, 30)
@@ -51,13 +62,11 @@ def create_document():
             in_table = False
             return
         
-        # Clean rows
         cleaned_rows = []
         for r in table_rows:
-            # Check if separator row like |---|---|
             if re.match(r'^\s*\|?\s*[-:]+\s*\|', r):
                 continue
-            cells = [c.strip() for c in r.strip().strip('|').split('|')]
+            cells = [sanitize(c.strip()) for c in r.strip().strip('|').split('|')]
             if any(cells):
                 cleaned_rows.append(cells)
         
@@ -72,19 +81,18 @@ def create_document():
                 for col_idx in range(col_count):
                     cell = row.cells[col_idx]
                     val = r_data[col_idx] if col_idx < len(r_data) else ""
-                    # Clean markdown bold/code from cell text
                     clean_val = re.sub(r'\*\*(.*?)\*\*', r'\1', val)
                     clean_val = re.sub(r'`(.*?)`', r'\1', clean_val)
                     
                     cell.text = clean_val
-                    set_cell_margins(cell, top=80, bottom=80, left=100, right=100)
+                    set_cell_margins(cell, top=70, bottom=70, left=90, right=90)
                     
                     p = cell.paragraphs[0]
                     p.paragraph_format.space_before = Pt(2)
                     p.paragraph_format.space_after = Pt(2)
                     run = p.runs[0] if p.runs else p.add_run()
-                    run.font.size = Pt(9)
-                    run.font.name = "Arial"
+                    run.font.size = Pt(8.5)
+                    run.font.name = "Calibri"
                     
                     if is_header:
                         set_cell_background(cell, "F5F2EB")
@@ -95,27 +103,26 @@ def create_document():
                             set_cell_background(cell, "FFFFFF")
                         else:
                             set_cell_background(cell, "FAF8F5")
-            doc.add_paragraph().paragraph_format.space_after = Pt(4)
+            doc.add_paragraph().paragraph_format.space_after = Pt(3)
 
         table_rows = []
         in_table = False
 
     for line in lines:
-        stripped = line.strip()
+        raw_stripped = line.strip()
+        stripped = sanitize(raw_stripped)
 
-        # Handle code blocks
         if stripped.startswith("```"):
             if in_code_block:
-                # Flush code block
                 in_code_block = False
                 p = doc.add_paragraph()
-                p.paragraph_format.space_before = Pt(4)
-                p.paragraph_format.space_after = Pt(6)
+                p.paragraph_format.space_before = Pt(3)
+                p.paragraph_format.space_after = Pt(4)
                 p.paragraph_format.left_indent = Inches(0.2)
                 code_text = "\n".join(code_block_lines)
                 run = p.add_run(code_text)
-                run.font.name = "Courier New"
-                run.font.size = Pt(8.5)
+                run.font.name = "Consolas"
+                run.font.size = Pt(8)
                 run.font.color.rgb = RGBColor(40, 40, 40)
                 code_block_lines = []
             else:
@@ -126,125 +133,110 @@ def create_document():
             continue
 
         if in_code_block:
-            code_block_lines.append(line.rstrip())
+            code_block_lines.append(sanitize(line.rstrip()))
             continue
 
-        # Handle tables
-        if "|" in stripped and (stripped.startswith("|") or stripped.endswith("|")):
+        if "|" in raw_stripped and (raw_stripped.startswith("|") or raw_stripped.endswith("|")):
             in_table = True
-            table_rows.append(stripped)
+            table_rows.append(raw_stripped)
             continue
         elif in_table:
             flush_table()
 
-        # Title
         if stripped.startswith("# "):
             p = doc.add_paragraph()
-            p.paragraph_format.space_before = Pt(14)
+            p.paragraph_format.space_before = Pt(12)
             p.paragraph_format.space_after = Pt(4)
             run = p.add_run(stripped[2:])
-            run.font.name = "Georgia"
-            run.font.size = Pt(22)
+            run.font.name = "Calibri"
+            run.font.size = Pt(18)
             run.font.bold = True
             run.font.color.rgb = terracotta_rgb
             continue
 
-        # Heading 2
         if stripped.startswith("## "):
             p = doc.add_paragraph()
-            p.paragraph_format.space_before = Pt(12)
+            p.paragraph_format.space_before = Pt(10)
             p.paragraph_format.space_after = Pt(3)
             run = p.add_run(stripped[3:])
-            run.font.name = "Georgia"
-            run.font.size = Pt(15)
+            run.font.name = "Calibri"
+            run.font.size = Pt(13)
+            run.font.bold = True
+            run.font.color.rgb = terracotta_rgb
+            continue
+
+        if stripped.startswith("### "):
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(7)
+            p.paragraph_format.space_after = Pt(2)
+            run = p.add_run(stripped[4:])
+            run.font.name = "Calibri"
+            run.font.size = Pt(10.5)
             run.font.bold = True
             run.font.color.rgb = charcoal_rgb
             continue
 
-        # Heading 3
-        if stripped.startswith("### "):
-            p = doc.add_paragraph()
-            p.paragraph_format.space_before = Pt(9)
-            p.paragraph_format.space_after = Pt(2)
-            run = p.add_run(stripped[4:])
-            run.font.name = "Arial"
-            run.font.size = Pt(12)
-            run.font.bold = True
-            run.font.color.rgb = terracotta_rgb
-            continue
-
-        # Horizontal rule
         if stripped.startswith("---"):
             p = doc.add_paragraph()
-            p.paragraph_format.space_before = Pt(4)
-            p.paragraph_format.space_after = Pt(4)
-            run = p.add_run("____________________________________________________________________")
-            run.font.color.rgb = RGBColor(220, 215, 210)
-            run.font.size = Pt(8)
+            p.paragraph_format.space_before = Pt(2)
+            p.paragraph_format.space_after = Pt(2)
             continue
 
-        # Bullet lists
         if stripped.startswith("- ") or stripped.startswith("* "):
             p = doc.add_paragraph(style='List Bullet')
             p.paragraph_format.space_before = Pt(1)
-            p.paragraph_format.space_after = Pt(1)
+            p.paragraph_format.space_after = Pt(2)
             content = stripped[2:]
             parts = re.split(r'(\*\*.*?\*\*|`.*?`)', content)
             for part in parts:
                 if part.startswith("**") and part.endswith("**"):
-                    r = p.add_run(part[2:-2])
-                    r.font.bold = True
+                    run = p.add_run(part[2:-2])
+                    run.bold = True
                 elif part.startswith("`") and part.endswith("`"):
-                    r = p.add_run(part[1:-1])
-                    r.font.name = "Courier New"
-                    r.font.size = Pt(9)
+                    run = p.add_run(part[1:-1])
+                    run.font.name = "Consolas"
+                    run.font.size = Pt(8.5)
                 else:
                     p.add_run(part)
             continue
 
-        # Numbered lists
-        num_match = re.match(r'^\d+\.\s+(.*)', stripped)
+        num_match = re.match(r'^(\d+\.)\s+(.*)', stripped)
         if num_match:
-            p = doc.add_paragraph(style='List Number')
+            p = doc.add_paragraph()
+            p.paragraph_format.left_indent = Inches(0.2)
             p.paragraph_format.space_before = Pt(1)
-            p.paragraph_format.space_after = Pt(1)
-            content = num_match.group(1)
+            p.paragraph_format.space_after = Pt(2)
+            run_num = p.add_run(f"{num_match.group(1)} ")
+            run_num.bold = True
+            content = num_match.group(2)
             parts = re.split(r'(\*\*.*?\*\*|`.*?`)', content)
             for part in parts:
                 if part.startswith("**") and part.endswith("**"):
-                    r = p.add_run(part[2:-2])
-                    r.font.bold = True
+                    run = p.add_run(part[2:-2])
+                    run.bold = True
                 elif part.startswith("`") and part.endswith("`"):
-                    r = p.add_run(part[1:-1])
-                    r.font.name = "Courier New"
-                    r.font.size = Pt(9)
+                    run = p.add_run(part[1:-1])
+                    run.font.name = "Consolas"
+                    run.font.size = Pt(8.5)
                 else:
                     p.add_run(part)
             continue
 
-        # Normal text paragraph
         if stripped:
             p = doc.add_paragraph()
-            p.paragraph_format.space_before = Pt(2)
+            p.paragraph_format.space_before = Pt(1)
             p.paragraph_format.space_after = Pt(3)
-            parts = re.split(r'(\*\*.*?\*\*|`.*?`|\*.*?\*)', stripped)
+            parts = re.split(r'(\*\*.*?\*\*|`.*?`)', stripped)
             for part in parts:
                 if part.startswith("**") and part.endswith("**"):
-                    r = p.add_run(part[2:-2])
-                    r.font.bold = True
-                elif part.startswith("*") and part.endswith("*") and not part.startswith("**"):
-                    r = p.add_run(part[1:-1])
-                    r.font.italic = True
+                    run = p.add_run(part[2:-2])
+                    run.bold = True
                 elif part.startswith("`") and part.endswith("`"):
-                    r = p.add_run(part[1:-1])
-                    r.font.name = "Courier New"
-                    r.font.size = Pt(9)
-                    r.font.color.rgb = RGBColor(160, 50, 20)
+                    run = p.add_run(part[1:-1])
+                    run.font.name = "Consolas"
+                    run.font.size = Pt(8.5)
                 else:
-                    r = p.add_run(part)
-                    r.font.name = "Arial"
-                    r.font.size = Pt(10)
-                    r.font.color.rgb = charcoal_rgb
+                    p.add_run(part)
 
     if in_table:
         flush_table()

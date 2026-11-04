@@ -5,6 +5,22 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Preformatted
 
+def sanitize(text: str) -> str:
+    """Sanitize unicode to WinAnsi/standard ASCII equivalents to prevent missing glyph boxes."""
+    if not text:
+        return ""
+    text = text.replace("₹", "Rs. ")
+    text = text.replace("–", "-")
+    text = text.replace("—", "--")
+    text = text.replace("✓", "[PASS]")
+    text = text.replace("λ", "lambda")
+    text = text.replace("•", "*")
+    text = text.replace("→", "->")
+    text = text.replace("▲", "^")
+    text = text.replace("▼", "v")
+    text = text.replace("▶", ">")
+    return text
+
 def create_pdf():
     pdf_path = "Technical-Design-Document.pdf"
     doc = SimpleDocTemplate(
@@ -21,26 +37,37 @@ def create_pdf():
     # Custom styles
     terracotta = colors.HexColor("#D9531E")
     charcoal = colors.HexColor("#1C1917")
-    cream_bg = colors.HexColor("#F5F2EB")
+    cream_bg = colors.HexColor("#F9F7F2")
+    border_color = colors.HexColor("#E2DDD5")
 
     title_style = ParagraphStyle(
         'DocTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=20,
-        leading=24,
+        fontSize=18,
+        leading=22,
         textColor=terracotta,
-        spaceAfter=6
+        spaceAfter=4
+    )
+
+    subtitle_style = ParagraphStyle(
+        'DocSubTitle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=11,
+        leading=14,
+        textColor=charcoal,
+        spaceAfter=8
     )
 
     h2_style = ParagraphStyle(
         'DocH2',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=13,
-        leading=16,
-        textColor=charcoal,
-        spaceBefore=12,
+        fontSize=12,
+        leading=15,
+        textColor=terracotta,
+        spaceBefore=10,
         spaceAfter=4
     )
 
@@ -48,11 +75,11 @@ def create_pdf():
         'DocH3',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=10.5,
+        fontSize=10,
         leading=13,
-        textColor=terracotta,
-        spaceBefore=8,
-        spaceAfter=2
+        textColor=charcoal,
+        spaceBefore=7,
+        spaceAfter=3
     )
 
     body_style = ParagraphStyle(
@@ -72,7 +99,7 @@ def create_pdf():
         fontSize=8.5,
         leading=11.5,
         textColor=charcoal,
-        leftIndent=15,
+        leftIndent=14,
         spaceAfter=2
     )
 
@@ -80,9 +107,9 @@ def create_pdf():
         'DocCode',
         parent=styles['Normal'],
         fontName='Courier',
-        fontSize=7.5,
-        leading=9.5,
-        textColor=colors.HexColor("#282828")
+        fontSize=7,
+        leading=9,
+        textColor=colors.HexColor("#262626")
     )
 
     story = []
@@ -105,7 +132,7 @@ def create_pdf():
         for r in table_rows:
             if re.match(r'^\s*\|?\s*[-:]+\s*\|', r):
                 continue
-            cells = [c.strip() for c in r.strip().strip('|').split('|')]
+            cells = [sanitize(c.strip()) for c in r.strip().strip('|').split('|')]
             if any(cells):
                 cleaned_rows.append(cells)
         
@@ -126,12 +153,20 @@ def create_pdf():
                     row_cells.append(Paragraph(val, style))
                 table_data.append(row_cells)
 
-            # Available page width is 612 - 90 = 522 pt
-            col_width = 522.0 / col_count
-            t = Table(table_data, colWidths=[col_width]*col_count)
+            # Page width is 612 - 90 = 522 pt
+            if col_count == 2:
+                col_widths = [140.0, 382.0]
+            elif col_count == 3:
+                col_widths = [110.0, 206.0, 206.0]
+            elif col_count == 4:
+                col_widths = [85.0, 110.0, 145.0, 182.0]
+            else:
+                col_widths = [522.0 / col_count] * col_count
+
+            t = Table(table_data, colWidths=col_widths)
             t_style = [
                 ('BACKGROUND', (0, 0), (-1, 0), cream_bg),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#E7E5E4")),
+                ('GRID', (0, 0), (-1, -1), 0.5, border_color),
                 ('TOPPADDING', (0, 0), (-1, -1), 3),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
                 ('LEFTPADDING', (0, 0), (-1, -1), 4),
@@ -145,13 +180,24 @@ def create_pdf():
         in_table = False
 
     for line in lines:
-        stripped = line.strip()
+        raw_stripped = line.strip()
+        stripped = sanitize(raw_stripped)
 
         if stripped.startswith("```"):
             if in_code_block:
                 in_code_block = False
                 block_str = "\n".join(code_block_lines)
-                story.append(Preformatted(block_str, code_style))
+                code_p = Preformatted(block_str, code_style)
+                code_table = Table([[code_p]], colWidths=[522.0])
+                code_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, -1), cream_bg),
+                    ('BOX', (0, 0), (-1, -1), 0.5, border_color),
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                ]))
+                story.append(code_table)
                 story.append(Spacer(1, 4))
                 code_block_lines = []
             else:
@@ -162,12 +208,12 @@ def create_pdf():
             continue
 
         if in_code_block:
-            code_block_lines.append(line.rstrip()[:100]) # Trim to avoid overflow
+            code_block_lines.append(sanitize(line.rstrip())[:110])
             continue
 
-        if "|" in stripped and (stripped.startswith("|") or stripped.endswith("|")):
+        if "|" in raw_stripped and (raw_stripped.startswith("|") or raw_stripped.endswith("|")):
             in_table = True
-            table_rows.append(stripped)
+            table_rows.append(raw_stripped)
             continue
         elif in_table:
             flush_table()
@@ -185,14 +231,14 @@ def create_pdf():
             continue
 
         if stripped.startswith("---"):
-            story.append(Spacer(1, 4))
+            story.append(Spacer(1, 3))
             continue
 
         if stripped.startswith("- ") or stripped.startswith("* "):
             content = stripped[2:]
             content = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', content)
             content = re.sub(r'`(.*?)`', r'<font face="Courier">\1</font>', content)
-            story.append(Paragraph(f"• {content}", bullet_style))
+            story.append(Paragraph(f"&bull; {content}", bullet_style))
             continue
 
         num_match = re.match(r'^(\d+\.)\s+(.*)', stripped)
