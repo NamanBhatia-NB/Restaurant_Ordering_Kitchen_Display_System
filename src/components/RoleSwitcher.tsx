@@ -4,7 +4,15 @@ import React from "react";
 import { useAuth } from "@/lib/auth/auth-context";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShieldAlert, User, ChefHat, Utensils, LayoutDashboard } from "lucide-react";
+import {
+  ShieldAlert,
+  User,
+  ChefHat,
+  Utensils,
+  LayoutDashboard,
+  Users,
+  BarChart3,
+} from "lucide-react";
 
 export function RoleSwitcher() {
   const { user, role, loginAsCustomer, loginAsKitchenStaff } = useAuth();
@@ -58,12 +66,28 @@ export function RoleSwitcher() {
               <Utensils className="w-3 h-3" /> Menu
             </Link>
             <Link
+              href="/party-orders"
+              className={`px-2 py-1 rounded hover:bg-charcoal-800 transition-colors flex items-center gap-1 ${
+                pathname.startsWith("/party-orders") ? "text-amber-400 font-medium" : "text-charcoal-300"
+              }`}
+            >
+              <Users className="w-3 h-3" /> Party Orders
+            </Link>
+            <Link
               href="/staff/kitchen"
               className={`px-2 py-1 rounded hover:bg-charcoal-800 transition-colors flex items-center gap-1 ${
                 pathname.startsWith("/staff/kitchen") ? "text-amber-400 font-medium" : "text-charcoal-300"
               }`}
             >
               <ChefHat className="w-3 h-3" /> Kitchen KDS
+            </Link>
+            <Link
+              href="/staff/dashboard"
+              className={`px-2 py-1 rounded hover:bg-charcoal-800 transition-colors flex items-center gap-1 ${
+                pathname.startsWith("/staff/dashboard") ? "text-emerald-400 font-medium" : "text-charcoal-300"
+              }`}
+            >
+              <BarChart3 className="w-3 h-3" /> Ops Dashboard
             </Link>
             <Link
               href="/staff/menu"

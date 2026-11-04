@@ -41,6 +41,10 @@ export const CreateOrderSchema = z.object({
   outlet_id: z.string().min(1, "Outlet selection is required"),
   payment_method: z.enum(["UPI", "CARD", "CASH"]),
   items: z.array(OrderItemInputSchema).min(1, "At least one item is required in the cart"),
+  coupon_code: z.string().optional(),
+  coupon_discount: z.number().min(0).optional().default(0),
+  loyalty_points_redeemed: z.number().min(0).optional().default(0),
+  marketing_opt_in: z.boolean().optional().default(true),
 });
 
 export const StatusTransitionSchema = z.object({

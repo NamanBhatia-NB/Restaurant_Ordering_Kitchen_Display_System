@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { MenuItem, MenuCategory } from "@/lib/db/schema";
 import { FoodCard } from "@/components/FoodCard";
 import { useCart } from "@/lib/cart/cart-context";
@@ -14,10 +16,14 @@ import {
   MapPin,
   UtensilsCrossed,
   RefreshCw,
+  RotateCcw,
+  Plus,
+  Users,
+  ArrowRight,
 } from "lucide-react";
 
 export default function HomePage() {
-  const { selectedOutlet, totalItems, total, setIsDrawerOpen } = useCart();
+  const { selectedOutlet, totalItems, total, setIsDrawerOpen, addItem } = useCart();
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<(MenuItem & { outletPrice?: number; isOutletAvailable?: boolean })[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -25,7 +31,6 @@ export default function HomePage() {
   const [dietaryFilter, setDietaryFilter] = useState<"all" | "veg" | "non-veg">("all");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [queueCount, setQueueCount] = useState<number>(2);
 
   const fetchMenu = async () => {
     setIsLoading(true);
@@ -49,6 +54,20 @@ export default function HomePage() {
   useEffect(() => {
     fetchMenu();
   }, [selectedOutlet.id]);
+
+  // AI Reorder Quick Add
+  const handleQuickReorder = () => {
+    const biryani = items.find((i) => i.id === "item-chicken-biryani-family");
+    const dessert = items.find((i) => i.id === "item-double-ka-meetha");
+
+    if (biryani) {
+      addItem(biryani, 1, "Family Pack (Serves 3-4)");
+    }
+    if (dessert) {
+      addItem(dessert, 2);
+    }
+    setIsDrawerOpen(true);
+  };
 
   // Filter items
   const filteredItems = items.filter((item) => {
@@ -87,7 +106,7 @@ export default function HomePage() {
               </h1>
 
               <p className="text-sm sm:text-base text-charcoal-600 leading-relaxed">
-                Direct handi-to-home ordering from 14 royal outlets & 3 cloud kitchens across Hyderabad. Real-time kitchen tracking and guaranteed honesty in delivery times.
+                Direct handi-to-home ordering from 14 royal outlets & 3 cloud kitchens across Hyderabad. Real-time kitchen tracking, loyalty rewards, and guaranteed honesty in delivery times.
               </p>
             </div>
 
@@ -141,9 +160,63 @@ export default function HomePage() {
       </section>
 
       {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
+        {/* AI Quick Reorder Banner (Brief Requirement) */}
+        <div className="bg-gradient-to-r from-cream-100 via-amber-50 to-cream-100 rounded-3xl border border-amber-200/80 p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-charcoal-950 flex items-center justify-center flex-shrink-0 shadow-sm">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-amber-800 tracking-wider">
+                AI Personalized Quick Reorder
+              </span>
+              <h3 className="font-serif font-bold text-base text-charcoal">
+                Reorder Your Friday Favorite: Chicken Dum Biryani & Double Ka Meetha
+              </h3>
+              <p className="text-xs text-charcoal-500">
+                1x Chicken Dum Biryani Family Pack + 2x Double Ka Meetha (₹1,180 total)
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleQuickReorder}
+              className="bg-charcoal hover:bg-charcoal-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors flex items-center gap-1.5 shadow-sm whitespace-nowrap active:scale-95"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>One-Tap Reorder (₹1,180)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Party Orders & Bulk Catering Teaser */}
+        <div className="bg-white rounded-3xl border border-cream-200 p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-terracotta-50 text-terracotta-600 flex items-center justify-center flex-shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-serif font-bold text-base text-charcoal">
+                Planning a Party or Corporate Event?
+              </h4>
+              <p className="text-xs text-charcoal-500">
+                Bulk handi catering for 20 to 500 guests. Save 15% directly with minimum 24h notice.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/party-orders"
+            className="text-xs font-bold text-terracotta-600 hover:text-terracotta-700 flex items-center gap-1 hover:underline whitespace-nowrap"
+          >
+            <span>Party Order Form</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
         {/* Search & Filter Bar */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
           {/* Search Box */}
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal-400" />
@@ -202,7 +275,7 @@ export default function HomePage() {
         </div>
 
         {/* Category Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 border-b border-cream-200 scrollbar-none">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-cream-200 scrollbar-none">
           <button
             onClick={() => setSelectedCategory("all")}
             className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
@@ -233,7 +306,7 @@ export default function HomePage() {
         </div>
 
         {/* GST Notice Badge */}
-        <div className="mb-6 p-3 rounded-2xl bg-cream-100/80 border border-cream-200 flex flex-wrap items-center justify-between gap-3 text-xs text-charcoal-600">
+        <div className="p-3 rounded-2xl bg-cream-100/80 border border-cream-200 flex flex-wrap items-center justify-between gap-3 text-xs text-charcoal-600">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
             <span>

@@ -16,11 +16,27 @@ import {
   Phone,
   User,
   AlertCircle,
+  Tag,
+  Gift,
+  Check,
 } from "lucide-react";
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, subtotal, gstAmount, total, selectedOutlet, clearCart } = useCart();
+  const {
+    items,
+    subtotal,
+    appliedCoupon,
+    couponDiscount,
+    availableLoyaltyPoints,
+    isRedeemingLoyalty,
+    loyaltyDiscount,
+    toggleRedeemLoyalty,
+    gstAmount,
+    total,
+    selectedOutlet,
+    clearCart,
+  } = useCart();
   const { user } = useAuth();
 
   const [customerName, setCustomerName] = useState(user?.full_name || "Farhan Ahmed");
@@ -28,6 +44,7 @@ export default function CheckoutPage() {
   const [customerAddress, setCustomerAddress] = useState(
     "Flat 402, Cyber Heights, Kondapur, Hyderabad 500084"
   );
+  const [marketingOptIn, setMarketingOptIn] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -86,6 +103,10 @@ export default function CheckoutPage() {
           portion: i.portion,
           add_ons: i.addOns,
         })),
+        coupon_code: appliedCoupon?.code,
+        coupon_discount: couponDiscount,
+        loyalty_points_redeemed: isRedeemingLoyalty ? availableLoyaltyPoints : 0,
+        marketing_opt_in: marketingOptIn,
       };
 
       const res = await fetch("/api/orders", {
@@ -126,10 +147,10 @@ export default function CheckoutPage() {
               Direct Order Checkout
             </span>
             <h1 className="font-serif text-3xl font-black text-charcoal mt-1">
-              Delivery Details
+              Delivery & Order Confirmation
             </h1>
             <p className="text-xs text-charcoal-500 mt-1">
-              Your contact details are encrypted and processed strictly for order fulfillment under the DPDP Act 2023.
+              Direct order benefits: 100% genuine Dum cooking, zero surge pricing, and rewards on every feast.
             </p>
           </div>
 
@@ -143,7 +164,7 @@ export default function CheckoutPage() {
           <form onSubmit={handleValidateAndOpenPay} className="space-y-4">
             <div className="bg-white p-6 rounded-3xl border border-cream-200 shadow-sm space-y-4">
               <h2 className="text-sm font-bold uppercase tracking-wider text-charcoal-600">
-                1. Contact & Recipient
+                1. Recipient Details
               </h2>
 
               <div>
@@ -213,6 +234,26 @@ export default function CheckoutPage() {
               </div>
             </div>
 
+            {/* DPDP Act 2023 Consent & Marketing Opt-in */}
+            <div className="bg-white p-5 rounded-3xl border border-cream-200 shadow-sm space-y-2 text-xs">
+              <label className="flex items-start gap-2.5 cursor-pointer text-charcoal-700">
+                <input
+                  type="checkbox"
+                  checked={marketingOptIn}
+                  onChange={(e) => setMarketingOptIn(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded text-terracotta-500 accent-terracotta-500"
+                />
+                <div>
+                  <span className="font-semibold block">
+                    DPDP Act 2023 Privacy Consent & Direct Notification Opt-in
+                  </span>
+                  <span className="text-[11px] text-charcoal-500 leading-relaxed block mt-0.5">
+                    I agree to receive order status updates via WhatsApp/SMS and opt in to direct-order exclusive festival menus. Your personal data is encrypted and never sold to aggregators.
+                  </span>
+                </div>
+              </label>
+            </div>
+
             <button
               type="submit"
               className="w-full bg-terracotta-500 hover:bg-terracotta-600 text-white font-bold py-4 px-6 rounded-2xl shadow-lg shadow-terracotta-500/25 transition-all flex items-center justify-center gap-2 text-base active:scale-98"
@@ -231,7 +272,7 @@ export default function CheckoutPage() {
             </h2>
 
             {/* Items review */}
-            <div className="divide-y divide-cream-100 max-h-64 overflow-y-auto space-y-3">
+            <div className="divide-y divide-cream-100 max-h-56 overflow-y-auto space-y-3">
               {items.map((item) => (
                 <div key={item.cartId} className="pt-3 first:pt-0 flex justify-between gap-3 text-xs">
                   <div>
@@ -254,42 +295,73 @@ export default function CheckoutPage() {
               ))}
             </div>
 
+            {/* Loyalty points toggle */}
+            <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-2xl text-xs flex items-center justify-between">
+              <div className="flex items-center gap-2 text-amber-900">
+                <Gift className="w-4 h-4 text-amber-600" />
+                <span>DumRewards ({availableLoyaltyPoints} pts)</span>
+              </div>
+              <label className="flex items-center gap-1.5 cursor-pointer font-bold text-charcoal">
+                <input
+                  type="checkbox"
+                  checked={isRedeemingLoyalty}
+                  onChange={(e) => toggleRedeemLoyalty(e.target.checked)}
+                  className="w-4 h-4 accent-terracotta-500 rounded"
+                />
+                <span>Apply ₹90 off</span>
+              </label>
+            </div>
+
             {/* Calculations */}
             <div className="border-t border-cream-200 pt-4 space-y-2 text-xs text-charcoal-600">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span className="font-bold text-charcoal">₹{subtotal}</span>
+                <span className="font-bold text-charcoal font-mono">₹{subtotal}</span>
               </div>
+
+              {couponDiscount > 0 && (
+                <div className="flex justify-between text-emerald-700 font-semibold">
+                  <span className="flex items-center gap-1">
+                    <Tag className="w-3.5 h-3.5" /> Coupon ({appliedCoupon?.code})
+                  </span>
+                  <span>-₹{couponDiscount}</span>
+                </div>
+              )}
+
+              {loyaltyDiscount > 0 && (
+                <div className="flex justify-between text-amber-700 font-semibold">
+                  <span>DumRewards Discount</span>
+                  <span>-₹{loyaltyDiscount}</span>
+                </div>
+              )}
+
               <div className="flex justify-between text-[11px] text-charcoal-500">
-                <span>Statutory 5% GST (Included)</span>
+                <span>Statutory 5% GST (Included in Price)</span>
                 <span>₹{gstAmount.toFixed(2)}</span>
               </div>
+
               <div className="flex justify-between text-emerald-700 font-semibold">
                 <span>Direct Order Fee</span>
                 <span>FREE (₹0)</span>
               </div>
+
               <div className="border-t border-cream-200 pt-3 flex justify-between text-base font-bold text-charcoal">
                 <span>Total Amount</span>
-                <span className="text-2xl font-extrabold text-terracotta-600">
+                <span className="text-2xl font-extrabold text-terracotta-600 font-mono">
                   ₹{total}
                 </span>
               </div>
             </div>
 
             {/* Trust box */}
-            <div className="p-3 rounded-2xl bg-cream-50 border border-cream-200 space-y-1.5 text-[11px] text-charcoal-500">
+            <div className="p-3 rounded-2xl bg-cream-50 border border-cream-200 space-y-1 text-[11px] text-charcoal-500">
               <div className="flex items-center gap-1.5 font-bold text-charcoal-700">
                 <Clock className="w-3.5 h-3.5 text-terracotta-500" />
-                <span>AI Preparation Estimate Active</span>
+                <span>AI Preparation Estimator Active</span>
               </div>
               <p>
-                Kitchen timer starts immediately after payment simulation with live progress tracking.
+                Real-time queue tracking begins as soon as payment is authorized.
               </p>
-            </div>
-
-            <div className="flex items-center gap-1 text-[10px] text-charcoal-400 justify-center">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Simulated Payment Gateway Sandbox</span>
             </div>
           </div>
         </div>

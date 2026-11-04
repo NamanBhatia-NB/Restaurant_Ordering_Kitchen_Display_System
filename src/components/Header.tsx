@@ -13,6 +13,8 @@ import {
   Flame,
   ChefHat,
   ChevronDown,
+  Users,
+  BarChart3,
 } from "lucide-react";
 
 export function Header() {
@@ -112,12 +114,19 @@ export function Header() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-5">
             <Link
               href="/"
               className="text-sm font-semibold text-charcoal hover:text-terracotta-600 transition-colors"
             >
               Menu
+            </Link>
+            <Link
+              href="/party-orders"
+              className="text-sm font-semibold text-terracotta-600 hover:text-terracotta-700 transition-colors flex items-center gap-1"
+            >
+              <Users className="w-3.5 h-3.5" />
+              Party Orders
             </Link>
             <Link
               href="/staff/kitchen"
@@ -127,10 +136,17 @@ export function Header() {
               Kitchen Display
             </Link>
             <Link
+              href="/staff/dashboard"
+              className="text-sm font-medium text-charcoal-600 hover:text-terracotta-600 transition-colors flex items-center gap-1"
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-emerald-600" />
+              Analytics
+            </Link>
+            <Link
               href="/staff/menu"
               className="text-sm font-medium text-charcoal-600 hover:text-terracotta-600 transition-colors"
             >
-              Menu Admin
+              Menu CMS
             </Link>
           </nav>
 
@@ -178,12 +194,28 @@ export function Header() {
               Full Menu
             </Link>
             <Link
+              href="/party-orders"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg font-medium text-terracotta-600 hover:bg-cream-100 flex items-center gap-2"
+            >
+              <Users className="w-4 h-4" />
+              Party Orders (Bulk Catering)
+            </Link>
+            <Link
               href="/staff/kitchen"
               onClick={() => setIsMobileMenuOpen(false)}
               className="block px-3 py-2 rounded-lg font-medium text-charcoal hover:bg-cream-100 flex items-center gap-2"
             >
               <ChefHat className="w-4 h-4 text-amber-600" />
               Kitchen Display (KDS)
+            </Link>
+            <Link
+              href="/staff/dashboard"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg font-medium text-charcoal hover:bg-cream-100 flex items-center gap-2"
+            >
+              <BarChart3 className="w-4 h-4 text-emerald-600" />
+              Central Operations Dashboard
             </Link>
             <Link
               href="/staff/menu"

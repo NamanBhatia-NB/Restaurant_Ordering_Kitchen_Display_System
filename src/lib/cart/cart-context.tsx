@@ -18,6 +18,33 @@ export interface CartLineItem {
   complexityScore: number;
 }
 
+export interface Coupon {
+  code: string;
+  description: string;
+  discountType: "FLAT" | "PERCENTAGE";
+  discountValue: number;
+  minOrderValue: number;
+  maxDiscount?: number;
+}
+
+export const AVAILABLE_COUPONS: Coupon[] = [
+  {
+    code: "DUMDIRECT",
+    description: "Flat ₹100 OFF on direct orders over ₹500",
+    discountType: "FLAT",
+    discountValue: 100,
+    minOrderValue: 500,
+  },
+  {
+    code: "NIZAM15",
+    description: "15% OFF up to ₹150 for Hyderabad food lovers",
+    discountType: "PERCENTAGE",
+    discountValue: 15,
+    minOrderValue: 400,
+    maxDiscount: 150,
+  },
+];
+
 interface CartContextType {
   items: CartLineItem[];
   selectedOutlet: Outlet;
@@ -34,6 +61,14 @@ interface CartContextType {
   clearCart: () => void;
   totalItems: number;
   subtotal: number;
+  appliedCoupon: Coupon | null;
+  couponDiscount: number;
+  applyCoupon: (code: string) => { success: boolean; message: string };
+  removeCoupon: () => void;
+  availableLoyaltyPoints: number;
+  isRedeemingLoyalty: boolean;
+  loyaltyDiscount: number;
+  toggleRedeemLoyalty: (redeem: boolean) => void;
   gstAmount: number;
   total: number;
   isDrawerOpen: boolean;
@@ -46,8 +81,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [selectedOutlet, setSelectedOutletState] = useState<Outlet>(SEED_OUTLETS[0]);
   const [items, setItems] = useState<CartLineItem[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [isRedeemingLoyalty, setIsRedeemingLoyalty] = useState<boolean>(false);
+  const availableLoyaltyPoints = 180; // 180 points = ₹90 discount (2 pts = ₹1)
 
-  // Load from localStorage
   useEffect(() => {
     const savedOutlet = localStorage.getItem("dumhouse_outlet");
     if (savedOutlet) {
@@ -94,7 +131,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const addOnsTotal = addOns.reduce((sum, a) => sum + a.price, 0);
     const lineUnitCost = unitPrice + addOnsTotal;
 
-    // Create unique key based on item + portion + addons signature
     const addOnKey = addOns.map((a) => a.name).sort().join(",");
     const signature = `${item.id}_${portion || "def"}_${addOnKey}`;
 
@@ -155,13 +191,54 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = () => {
     saveCart([]);
+    setAppliedCoupon(null);
+    setIsRedeemingLoyalty(false);
   };
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
   const subtotal = items.reduce((sum, i) => sum + i.lineTotal, 0);
-  // 5% GST is already included in prices: subtotal = net + (net * 0.05) => net = subtotal / 1.05
-  const gstAmount = Math.round((subtotal - subtotal / 1.05) * 100) / 100;
-  const total = subtotal;
+
+  // Apply Coupon
+  const applyCoupon = (code: string) => {
+    const clean = code.trim().toUpperCase();
+    const found = AVAILABLE_COUPONS.find((c) => c.code === clean);
+    if (!found) {
+      return { success: false, message: "Invalid promo code. Try DUMDIRECT or NIZAM15" };
+    }
+    if (subtotal < found.minOrderValue) {
+      return {
+        success: false,
+        message: `Minimum order value of ₹${found.minOrderValue} required for ${found.code}`,
+      };
+    }
+    setAppliedCoupon(found);
+    return { success: true, message: `Coupon ${found.code} applied successfully!` };
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+  };
+
+  // Coupon Discount Calculation
+  let couponDiscount = 0;
+  if (appliedCoupon && subtotal >= appliedCoupon.minOrderValue) {
+    if (appliedCoupon.discountType === "FLAT") {
+      couponDiscount = appliedCoupon.discountValue;
+    } else {
+      const pct = (subtotal * appliedCoupon.discountValue) / 100;
+      couponDiscount = appliedCoupon.maxDiscount ? Math.min(pct, appliedCoupon.maxDiscount) : pct;
+    }
+    couponDiscount = Math.round(couponDiscount);
+  }
+
+  // Loyalty Discount (2 points = ₹1)
+  const loyaltyDiscount = isRedeemingLoyalty ? Math.min(subtotal - couponDiscount, Math.round(availableLoyaltyPoints / 2)) : 0;
+
+  const totalDiscounts = couponDiscount + loyaltyDiscount;
+  const total = Math.max(0, subtotal - totalDiscounts);
+
+  // 5% GST is already included in displayed prices
+  const gstAmount = Math.round((total - total / 1.05) * 100) / 100;
 
   return (
     <CartContext.Provider
@@ -175,6 +252,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         clearCart,
         totalItems,
         subtotal,
+        appliedCoupon,
+        couponDiscount,
+        applyCoupon,
+        removeCoupon,
+        availableLoyaltyPoints,
+        isRedeemingLoyalty,
+        loyaltyDiscount,
+        toggleRedeemLoyalty: setIsRedeemingLoyalty,
         gstAmount,
         total,
         isDrawerOpen,

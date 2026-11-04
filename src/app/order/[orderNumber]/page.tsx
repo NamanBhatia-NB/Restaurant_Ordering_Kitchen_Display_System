@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   AlertCircle,
   RefreshCw,
+  MessageSquare,
 } from "lucide-react";
 
 const STAGES: { status: OrderStatus; label: string; desc: string; icon: any }[] = [
@@ -94,10 +95,8 @@ export default function OrderTrackingPage({
   useEffect(() => {
     fetchOrder();
 
-    // Timer tick every 5 seconds for live countdown
     const timer = setInterval(() => setNow(Date.now()), 5000);
 
-    // Realtime SSE connection for instantaneous kitchen updates
     let eventSource: EventSource | null = null;
     try {
       eventSource = new EventSource("/api/events?channel=*");
@@ -110,7 +109,6 @@ export default function OrderTrackingPage({
             (payload.order.order_number === orderNumber || payload.order.id === orderNumber)
           ) {
             setOrder(payload.order);
-            // Refresh events
             fetch(`/api/orders/${orderNumber}`)
               .then((r) => r.json())
               .then((d) => d.events && setEvents(d.events));
@@ -119,7 +117,6 @@ export default function OrderTrackingPage({
       });
     } catch {}
 
-    // Fallback polling every 8s
     const pollInterval = setInterval(fetchOrder, 8000);
 
     return () => {
@@ -158,12 +155,31 @@ export default function OrderTrackingPage({
     );
   }
 
-  // Calculate current stage index
   const currentStageIndex = STAGES.findIndex((s) => s.status === order.status);
   const promisedTime = new Date(order.promised_at).getTime();
   const minutesRemaining = Math.max(0, Math.round((promisedTime - now) / 60000));
   const isDelayed = now > promisedTime && !["READY", "HANDED_OFF", "COMPLETED"].includes(order.status);
   const delayedMinutes = Math.round((now - promisedTime) / 60000);
+
+  // Simulated WhatsApp status message based on brief requirement
+  const getSimulatedWhatsAppMessage = () => {
+    switch (order.status) {
+      case "RECEIVED":
+        return `DumHouse: Hello ${order.customer_name}! Your feast #${order.order_number} has been received and routed to our ${order.outlet_name} kitchen. Estimated prep time is ~${order.estimated_prep_minutes} mins.`;
+      case "ACCEPTED":
+        return `DumHouse: Chef Rasheed at ${order.outlet_name} has accepted your ticket #${order.order_number}. Ingredients are staged for slow dum cooking.`;
+      case "PREPARING":
+        return `DumHouse: Order #${order.order_number} is now sealed with dough and slow-steaming on the bhatti! Promised ready time: ${new Date(order.promised_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`;
+      case "READY":
+        return `DumHouse: Great news! Order #${order.order_number} is packed hot with fresh Salan and Raita, waiting for delivery handoff at ${order.outlet_name}.`;
+      case "HANDED_OFF":
+        return `DumHouse: Order #${order.order_number} is handed over to our delivery partner and is en route to ${order.customer_address}!`;
+      case "COMPLETED":
+        return `DumHouse: Delivered! Enjoy Hyderabad's authentic dum biryani. You earned 10 DumRewards points!`;
+      default:
+        return `DumHouse: Order status updated to ${order.status}.`;
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -254,6 +270,29 @@ export default function OrderTrackingPage({
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Simulated WhatsApp / SMS Live Dispatch Notification (Brief Requirement) */}
+      <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0">
+            <MessageSquare className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-emerald-950">WhatsApp / SMS Auto-Dispatch</span>
+              <span className="text-[10px] bg-emerald-200 text-emerald-900 font-bold px-1.5 py-0.2 rounded font-mono">
+                {order.customer_phone}
+              </span>
+            </div>
+            <p className="text-emerald-900/80 text-[11px] mt-0.5 font-sans leading-relaxed">
+              &ldquo;{getSimulatedWhatsAppMessage()}&rdquo;
+            </p>
+          </div>
+        </div>
+        <span className="text-[10px] text-emerald-700 font-semibold uppercase tracking-wider self-end sm:self-auto">
+          Delivered
+        </span>
       </div>
 
       {/* Progress Timeline Tracker */}

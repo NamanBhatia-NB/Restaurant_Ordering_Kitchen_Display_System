@@ -26,8 +26,8 @@ class Store {
   private outlets: Map<string, Outlet> = new Map();
   private categories: Map<string, MenuCategory> = new Map();
   private menuItems: Map<string, MenuItem> = new Map();
-  private outletMenuItems: Map<string, OutletMenuItem> = new Map(); // key: outletId:itemId
-  private orders: Map<string, Order> = new Map(); // key: order_number or order.id
+  private outletMenuItems: Map<string, OutletMenuItem> = new Map();
+  private orders: Map<string, Order> = new Map();
   private orderEvents: OrderEvent[] = [];
   private profiles: Map<string, Profile> = new Map();
   private nextOrderSeq: number = 778150;
@@ -49,7 +49,6 @@ class Store {
       this.orders.set(order.id, { ...order });
       this.orders.set(order.order_number, { ...order });
 
-      // Initial event for each seed order
       this.orderEvents.push({
         id: `event-${order.order_number}-init`,
         order_id: order.id,
@@ -127,7 +126,7 @@ class Store {
     return updated;
   }
 
-  // Queue Depth for Outlet (Orders currently in progress)
+  // Queue Depth for Outlet
   public getKitchenQueueDepth(outletId: string): number {
     return Array.from(new Set(this.orders.values())).filter(
       (o) =>
@@ -166,11 +165,14 @@ class Store {
       portion?: string;
       add_ons?: { name: string; price: number }[];
     }[];
+    coupon_code?: string;
+    coupon_discount?: number;
+    loyalty_points_redeemed?: number;
+    marketing_opt_in?: boolean;
   }): Order {
     const outlet = this.getOutlet(input.outlet_id);
     if (!outlet) throw new Error("Selected outlet does not exist");
 
-    // Server-side price calculation and item snapshot
     let subtotal = 0;
     let totalItems = 0;
     let totalComplexityPoints = 0;
@@ -183,11 +185,9 @@ class Store {
         throw new Error(`Item not found: ${reqItem.menu_item_id}`);
       }
 
-      // Check outlet specific price
       const outletOverride = this.outletMenuItems.get(`${input.outlet_id}:${menuItem.id}`);
       const basePrice = outletOverride ? outletOverride.price : menuItem.base_price;
 
-      // Portion multiplier calculation
       let unitPrice = basePrice;
       if (reqItem.portion && menuItem.portion_options) {
         const option = menuItem.portion_options.find((p) => p.name === reqItem.portion);
@@ -196,7 +196,6 @@ class Store {
         }
       }
 
-      // Add-ons total per unit
       const addOnsCost = (reqItem.add_ons || []).reduce((acc, a) => acc + a.price, 0);
       const lineUnitTotal = unitPrice + addOnsCost;
       const lineTotal = lineUnitTotal * reqItem.quantity;
@@ -207,7 +206,7 @@ class Store {
 
       orderItems.push({
         id: `item-${Date.now()}-${index}`,
-        order_id: "", // filled below
+        order_id: "",
         menu_item_id: menuItem.id,
         item_name_snapshot: menuItem.name,
         portion_snapshot: reqItem.portion,
@@ -220,16 +219,22 @@ class Store {
       });
     });
 
-    // 5% GST is already included in the displayed food prices
-    // Food price including GST = Subtotal. GST portion = Subtotal - (Subtotal / 1.05)
-    const gst_amount = Math.round((subtotal - subtotal / 1.05) * 100) / 100;
-    const total = subtotal;
+    // Deduct validated coupon discount and loyalty points
+    const couponDeduction = input.coupon_discount || 0;
+    const loyaltyDeduction = input.loyalty_points_redeemed
+      ? Math.round(input.loyalty_points_redeemed / 2)
+      : 0;
+    const totalDiscounts = couponDeduction + loyaltyDeduction;
+    const total = Math.max(0, subtotal - totalDiscounts);
+
+    // 5% GST is already included in displayed prices
+    const gst_amount = Math.round((total - total / 1.05) * 100) / 100;
 
     // AI Preparation Time Estimation
     const queueDepth = this.getKitchenQueueDepth(input.outlet_id);
     const now = new Date();
     const currentHour = now.getHours();
-    const currentDay = now.getDay(); // 0 is Sunday, 5 is Friday, 6 is Saturday
+    const currentDay = now.getDay();
 
     const isPeakPeriod =
       (currentHour >= 12 && currentHour <= 15) || (currentHour >= 19 && currentHour <= 22)
@@ -252,7 +257,6 @@ class Store {
     const createdAt = new Date().toISOString();
     const promisedAt = new Date(Date.now() + aiPrediction.promisedMinutes * 60000).toISOString();
 
-    // Link order id into items
     orderItems.forEach((item) => (item.order_id = orderId));
 
     const newOrder: Order = {
@@ -269,7 +273,7 @@ class Store {
       gst_amount,
       total,
       payment_method: input.payment_method,
-      payment_status: "PAID", // Simulated payment instant success
+      payment_status: "PAID",
       estimated_prep_minutes: aiPrediction.promisedMinutes,
       promised_at: promisedAt,
       ai_metadata: {
@@ -289,10 +293,15 @@ class Store {
     this.orders.set(orderId, newOrder);
     this.orders.set(orderNumber, newOrder);
 
-    // Record Event
-    this.recordEvent(orderId, orderNumber, undefined, "RECEIVED", input.customer_id, "Order placed by customer");
+    this.recordEvent(
+      orderId,
+      orderNumber,
+      undefined,
+      "RECEIVED",
+      input.customer_id,
+      `Order placed by customer${input.coupon_code ? ` (Coupon ${input.coupon_code})` : ""}`
+    );
 
-    // Realtime notification
     appEventBus.emit("orders", { type: "ORDER_CREATED", order: newOrder });
     appEventBus.emit(`outlet:${outlet.id}`, { type: "ORDER_CREATED", order: newOrder });
 
@@ -344,7 +353,6 @@ class Store {
     order.kitchen_override_reason = reason;
     order.estimated_prep_minutes = overrideMinutes;
 
-    // Recalculate promised time from creation date + override
     const createdTime = new Date(order.created_at).getTime();
     order.promised_at = new Date(createdTime + overrideMinutes * 60000).toISOString();
     order.updated_at = new Date().toISOString();
@@ -395,7 +403,6 @@ class Store {
     );
   }
 
-  // Demo Profiles
   public getProfile(idOrEmail: string): Profile | undefined {
     for (const p of this.profiles.values()) {
       if (p.id === idOrEmail || p.email === idOrEmail) return p;
@@ -404,7 +411,6 @@ class Store {
   }
 }
 
-// Global Singleton
 const globalForStore = globalThis as unknown as { appStore: Store };
 export const dbStore = globalForStore.appStore || new Store();
 if (process.env.NODE_ENV !== "production") globalForStore.appStore = dbStore;

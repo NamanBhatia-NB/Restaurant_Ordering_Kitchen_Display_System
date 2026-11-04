@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { dbStore } from "../src/lib/db/store";
-import { isValidTransition, VALID_STATUS_TRANSITIONS } from "../src/lib/validation/schemas";
-import { OrderStatus } from "../src/lib/db/schema";
+import { isValidTransition } from "../src/lib/validation/schemas";
 
 describe("Restaurant Order Business Logic & State Transitions", () => {
   it("allows all valid forward status transitions", () => {
@@ -21,10 +20,8 @@ describe("Restaurant Order Business Logic & State Transitions", () => {
   });
 
   it("strictly rejects backward and invalid jump transitions", () => {
-    // Jumping directly from RECEIVED to READY or COMPLETED is illegal
     expect(isValidTransition("RECEIVED", "READY")).toBe(false);
     expect(isValidTransition("RECEIVED", "COMPLETED")).toBe(false);
-    // Going backward from READY to PREPARING is illegal
     expect(isValidTransition("READY", "PREPARING")).toBe(false);
     expect(isValidTransition("COMPLETED", "ACCEPTED")).toBe(false);
   });
@@ -39,24 +36,42 @@ describe("Restaurant Order Business Logic & State Transitions", () => {
       payment_method: "UPI",
       items: [
         {
-          menu_item_id: "item-chicken-biryani-family", // Base price 850
+          menu_item_id: "item-chicken-biryani-family",
           quantity: 1,
           portion: "Family Pack (Serves 3-4)",
         },
         {
-          menu_item_id: "item-double-ka-meetha", // Base price 165
+          menu_item_id: "item-double-ka-meetha",
           quantity: 2,
         },
       ],
     });
 
-    // 850 * 1 + 165 * 2 = 1180
     expect(order.subtotal).toBe(1180);
     expect(order.total).toBe(1180);
-    // 5% GST included: 1180 - (1180 / 1.05) ~ 56.19
     expect(order.gst_amount).toBeCloseTo(56.19, 1);
     expect(order.status).toBe("RECEIVED");
     expect(order.payment_status).toBe("PAID");
+  });
+
+  it("correctly applies coupon code discount and loyalty point deductions", () => {
+    const orderWithCoupon = dbStore.createOrder({
+      customer_id: "test-customer-coupon",
+      customer_name: "Fatima Khan",
+      customer_phone: "+91 98496 22334",
+      customer_address: "Banjara Hills",
+      outlet_id: "outlet-kondapur",
+      payment_method: "UPI",
+      items: [{ menu_item_id: "item-chicken-biryani-family", quantity: 1 }], // 850
+      coupon_code: "DUMDIRECT",
+      coupon_discount: 100,
+      loyalty_points_redeemed: 100, // 100 points = ₹50
+    });
+
+    // 850 - 100 (coupon) - 50 (loyalty) = 700
+    expect(orderWithCoupon.subtotal).toBe(850);
+    expect(orderWithCoupon.total).toBe(700);
+    expect(orderWithCoupon.gst_amount).toBeCloseTo(33.33, 1);
   });
 
   it("accurately applies add-on side costs to line items", () => {
@@ -69,12 +84,12 @@ describe("Restaurant Order Business Logic & State Transitions", () => {
       payment_method: "CARD",
       items: [
         {
-          menu_item_id: "item-veg-biryani", // Base price 250
+          menu_item_id: "item-veg-biryani",
           quantity: 2,
           add_ons: [
             { name: "Extra Crispy Fried Onions", price: 25 },
             { name: "Extra Veg Salan", price: 40 },
-          ], // Unit: 250 + 65 = 315. Total for 2: 630
+          ],
         },
       ],
     });
