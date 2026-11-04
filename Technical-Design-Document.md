@@ -4,8 +4,8 @@
 ---
 
 ### **Project Metadata & Review Links**
-- **GitHub Project Repository:** `https://github.com/naman-isocode/dumhouse-platform` *(Place actual repository URL here before final submission)*
-- **Live Production Application:** `https://dumhouse-platform.vercel.app` *(Place production Vercel/Supabase URL here)*
+- **GitHub Project Repository:** `https://github.com/NamanBhatia-NB/Restaurant_Ordering_Kitchen_Display_System`
+- **Live Production Application:** `https://dumhouse-platform.vercel.app` *(Optional deployment URL)*
 - **Client Organization:** Company A, Hyderabad (Biryani & Authentic Hyderabadi Food Chain)
 - **Scale:** 14 Outlets, 3 Cloud Kitchens, 520 Staff, ₹90–105 Crore Annual Revenue
 - **Prepared For:** Isocode Software Engineering Take-Home Assessment (Problem Statement 3)
