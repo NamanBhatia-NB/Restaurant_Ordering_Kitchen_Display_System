@@ -1,35 +1,48 @@
-# dependencies
+# Dependencies
 /node_modules
 /.pnp
 .pnp.js
 .yarn/cache
 
-# testing
+# Testing & Coverage
 /coverage
+.nyc_output
 
-# next.js
+# Next.js build output
 /.next/
 /out/
-
-# production
 /build
+/dist
 
-# misc
-.DS_Store
-*.pem
+# Environment variable files (Keep secrets safe!)
+.env
+.env*.local
+.env.development
+.env.test
+.env.production
+! .env.example
 
-# debug
+# Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-# local env files
-.env*.local
-.env
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
 
-# vercel
-.vercel
+# Editor & OS files
+.DS_Store
+Thumbs.db
+*.pem
+.vscode/
+.idea/
 
-# typescript
+# TypeScript
 *.tsbuildinfo
 next-env.d.ts
