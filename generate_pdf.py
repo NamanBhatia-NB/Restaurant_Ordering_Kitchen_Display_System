@@ -21,6 +21,16 @@ def sanitize(text: str) -> str:
     text = text.replace("▶", ">")
     return text
 
+def format_inline(text: str) -> str:
+    text = sanitize(text)
+    # Bold
+    text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+    # Italic
+    text = re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', r'<i>\1</i>', text)
+    # Inline code
+    text = re.sub(r'`(.*?)`', r'<font face="Courier">\1</font>', text)
+    return text
+
 def create_pdf():
     pdf_path = "Technical-Design-Document.pdf"
     doc = SimpleDocTemplate(
@@ -48,16 +58,6 @@ def create_pdf():
         leading=22,
         textColor=terracotta,
         spaceAfter=4
-    )
-
-    subtitle_style = ParagraphStyle(
-        'DocSubTitle',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=11,
-        leading=14,
-        textColor=charcoal,
-        spaceAfter=8
     )
 
     h2_style = ParagraphStyle(
@@ -132,7 +132,7 @@ def create_pdf():
         for r in table_rows:
             if re.match(r'^\s*\|?\s*[-:]+\s*\|', r):
                 continue
-            cells = [sanitize(c.strip()) for c in r.strip().strip('|').split('|')]
+            cells = [c.strip() for c in r.strip().strip('|').split('|')]
             if any(cells):
                 cleaned_rows.append(cells)
         
@@ -143,9 +143,7 @@ def create_pdf():
                 row_cells = []
                 for col_idx in range(col_count):
                     raw_val = r_data[col_idx] if col_idx < len(r_data) else ""
-                    # Markdown bold/code to ReportLab tags
-                    val = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', raw_val)
-                    val = re.sub(r'`(.*?)`', r'<font face="Courier">\1</font>', val)
+                    val = format_inline(raw_val)
                     style = ParagraphStyle('TCell', parent=body_style, fontSize=7.5, leading=9.5)
                     if row_idx == 0:
                         style.fontName = 'Helvetica-Bold'
@@ -181,9 +179,8 @@ def create_pdf():
 
     for line in lines:
         raw_stripped = line.strip()
-        stripped = sanitize(raw_stripped)
 
-        if stripped.startswith("```"):
+        if raw_stripped.startswith("```"):
             if in_code_block:
                 in_code_block = False
                 block_str = "\n".join(code_block_lines)
@@ -218,41 +215,36 @@ def create_pdf():
         elif in_table:
             flush_table()
 
-        if stripped.startswith("# "):
-            story.append(Paragraph(stripped[2:], title_style))
+        if raw_stripped.startswith("# "):
+            story.append(Paragraph(format_inline(raw_stripped[2:]), title_style))
             continue
 
-        if stripped.startswith("## "):
-            story.append(Paragraph(stripped[3:], h2_style))
+        if raw_stripped.startswith("## "):
+            story.append(Paragraph(format_inline(raw_stripped[3:]), h2_style))
             continue
 
-        if stripped.startswith("### "):
-            story.append(Paragraph(stripped[4:], h3_style))
+        if raw_stripped.startswith("### "):
+            story.append(Paragraph(format_inline(raw_stripped[4:]), h3_style))
             continue
 
-        if stripped.startswith("---"):
+        if raw_stripped.startswith("---"):
             story.append(Spacer(1, 3))
             continue
 
-        if stripped.startswith("- ") or stripped.startswith("* "):
-            content = stripped[2:]
-            content = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', content)
-            content = re.sub(r'`(.*?)`', r'<font face="Courier">\1</font>', content)
+        if raw_stripped.startswith("- ") or raw_stripped.startswith("* "):
+            content = format_inline(raw_stripped[2:])
             story.append(Paragraph(f"&bull; {content}", bullet_style))
             continue
 
-        num_match = re.match(r'^(\d+\.)\s+(.*)', stripped)
+        num_match = re.match(r'^(\d+\.)\s+(.*)', raw_stripped)
         if num_match:
             prefix = num_match.group(1)
-            content = num_match.group(2)
-            content = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', content)
-            content = re.sub(r'`(.*?)`', r'<font face="Courier">\1</font>', content)
+            content = format_inline(num_match.group(2))
             story.append(Paragraph(f"{prefix} {content}", bullet_style))
             continue
 
-        if stripped:
-            content = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', stripped)
-            content = re.sub(r'`(.*?)`', r'<font face="Courier">\1</font>', content)
+        if raw_stripped:
+            content = format_inline(raw_stripped)
             story.append(Paragraph(content, body_style))
 
     if in_table:

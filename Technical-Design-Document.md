@@ -5,9 +5,9 @@
 
 ### **Project Metadata & Review Links**
 - **GitHub Project Repository:** `https://github.com/NamanBhatia-NB/Restaurant_Ordering_Kitchen_Display_System`
-- **Live Production Application:** `https://dumhouse-platform.vercel.app` *(Optional deployment URL)*
+- **Live Production Application:** `https://restaurant-ordering-kitchen-display-two.vercel.app`
 - **Client Organization:** Company A, Hyderabad (Biryani & Authentic Hyderabadi Food Chain)
-- **Scale:** 14 Outlets, 3 Cloud Kitchens, 520 Staff, ₹90–105 Crore Annual Revenue
+- **Scale:** 14 Outlets, 3 Cloud Kitchens, 520 Staff, Rs. 90-105 Crore Annual Revenue
 - **Prepared For:** Isocode Software Engineering Take-Home Assessment (Problem Statement 3)
 - **Author:** Software Engineering Candidate
 
@@ -16,14 +16,14 @@
 ## 1. Executive Summary & Business Rationale
 
 ### 1.1 The Client's Dilemma
-Company A is a premier Hyderabad restaurant chain celebrated for authentic Handi Dum Biryani, Mutton Haleem, and Nizami specialties. Despite generating ₹90–105 crore in annual revenue, over **55% of sales flow through third-party food delivery aggregators (Swiggy, Zomato)**. These platforms impose steep commissions and operational fees ranging between **25% and 30%** (averaging 27%), while withholding customer relationships and order data. Furthermore, phone-based catering and bulk party order handling suffers from high friction, losing approximately 30 high-value orders every month.
+Company A is a premier Hyderabad restaurant chain celebrated for authentic Handi Dum Biryani, Mutton Haleem, and Nizami specialties. Despite generating Rs. 90-105 crore in annual revenue, over **55% of sales flow through third-party food delivery aggregators (Swiggy, Zomato)**. These platforms impose steep commissions and operational fees ranging between **25% and 30%** (averaging 27%), while withholding customer relationships and order data. Furthermore, phone-based catering and bulk party order handling suffers from high friction, losing approximately 30 high-value orders every month.
 
 ### 1.2 The Economic Case & ROI
-- **Direct Order Migration:** Shifting just 12% of app orders to direct online channels (where payment gateway and direct delivery fulfillment fees average 12%) saves **15 percentage points** on ₹6.336 crore:
-  $$\text{Commission Savings} = 0.15 \times ₹63,360,000 = ₹9,504,000 \text{ (₹95.04 Lakh/year)}$$
-- **Recovering Lost Bulk & Party Orders:** Regaining 30 lost orders monthly at ₹18,000 average order value (AOV) with a 30% contribution margin:
-  $$\text{Bulk Recovery} = 30 \times (₹18,000 \times 0.30) \times 12 = ₹1,944,000 \text{ (₹19.44 Lakh/year)}$$
-- **Total Annual Bottom-Line Impact:** **₹1.14 Crore per year** against an engineering implementation budget of ₹9 Lakh (yielding an ROI of over **12.6x within the first 12 months**).
+- **Direct Order Migration:** Shifting just 12% of app orders to direct online channels (where payment gateway and direct delivery fulfillment fees average 12%) saves **15 percentage points** on Rs. 6.336 Crore:
+  `Commission Savings = 0.15 x Rs. 6,33,60,000 = Rs. 95.04 Lakh per year`
+- **Recovering Lost Bulk & Party Orders:** Regaining 30 lost orders monthly at Rs. 18,000 average order value (AOV) with a 30% contribution margin:
+  `Bulk Recovery = 30 orders x (Rs. 18,000 x 30% margin) x 12 months = Rs. 19.44 Lakh per year`
+- **Total Annual Bottom-Line Impact:** **Rs. 1.14 Crore per year** against an engineering implementation budget of Rs. 9 Lakh (yielding an ROI of over **12.6x within the first 12 months**).
 
 ---
 
@@ -67,7 +67,7 @@ The platform is built as a cohesive, high-performance web application utilizing 
 | **Presentation Tier** | Customer Mobile PWA, Kitchen Android Tablet KDS, Operations Admin Desktop | Built with Next.js 15 App Router, React 19, and Tailwind CSS. Features high-contrast dark theme for 2-meter kitchen readability, responsive layout across all viewports, and zero dead buttons. |
 | **Application & API Tier** | Server Route Handlers (`/api/orders`, `/api/menu`, `/api/stream`) | Server-side price verification and discount calculations, strict Zod schema payload validation, transactional order state machine transitions (`RECEIVED` -> `ACCEPTED` -> `PREPARING` -> `READY` -> `HANDED_OFF` -> `COMPLETED`). |
 | **Real-Time Tier** | Server-Sent Events (SSE) Bus (`/api/stream`) & Supabase Broadcast | Lightweight, resilient downstream event streaming (`text/event-stream`), automatic reconnection fallback, sub-second order arrival dispatch to kitchen tablet screens. |
-| **Intelligence Tier** | AI Ridge Preparation Estimator (`src/lib/ai/prep-estimator.ts`) | Closed-form analytical L2-regularized linear regression: $(X^T X + \lambda I)^{-1} X^T Y$, trained on 180 reproducible kitchen samples. Inputs: item count, complexity points, current queue depth, peak dinner flag, weekend indicator. |
+| **Intelligence Tier** | AI Ridge Preparation Estimator (`src/lib/ai/prep-estimator.ts`) | Closed-form analytical L2-regularized linear regression: `w = inv(X^T . X + lambda . I) . X^T . Y`, trained on 180 reproducible kitchen samples. Inputs: item count, complexity points, current queue depth, peak dinner flag, weekend indicator. |
 | **Data & Persistence Tier** | Dual-Engine: Supabase PostgreSQL & Resilient Local Store | Normalized relational database with foreign key integrity, row-level security (RLS) policies, and pre-seeded realistic sample orders (`WEB-778120`, `WEB-778131`, `WEB-778146`) ensuring zero-config out-of-the-box evaluator testing. |
 
 ### 3.2 Technical Choices & Trade-off Analysis
@@ -98,28 +98,33 @@ The platform is built as a cohesive, high-performance web application utilizing 
 ## 5. AI Preparation-Time Prediction Model
 
 ### 5.1 Formulation & Objective
-Rather than calling non-deterministic LLMs for numerical estimation or hardcoding arbitrary timers, DumHouse features a genuine, mathematically interpretable **Ridge Regression ($L_2$-Regularized Linear Regression)** model written from first principles in TypeScript.
+Rather than calling non-deterministic LLMs for numerical estimation or hardcoding arbitrary timers, DumHouse features a genuine, mathematically interpretable **Ridge Regression (L2-Regularized Linear Regression)** model written from first principles in TypeScript (`src/lib/ai/prep-estimator.ts`).
 
-The prediction hypothesis is formulated as:
-$$\hat{y} = w_0 + \sum_{j=1}^{5} w_j \left( \frac{x_j - \mu_j}{\sigma_j} \right)$$
+The prediction hypothesis is formulated with standardized z-score features:
+```text
+Predicted Prep Minutes = w0 + SUM [ w_j x (x_j - mean_j) / std_j ]  (for j = 1 to 5)
+```
 
-Where $x$ represents the 5 operational kitchen features:
-1. $x_1$: `item_count` — Total quantity of dishes in the ticket.
-2. $x_2$: `complexity_points` — Sum of recipe complexity scores ($\text{score} \in [1, 5]$). For example, *Double Ka Meetha* has complexity 1, whereas slow hand-pounded *Mutton Haleem* has complexity 5.
-3. $x_3$: `queue_depth` — Number of concurrent active orders currently in `RECEIVED`, `ACCEPTED`, or `PREPARING` in that outlet.
-4. $x_4$: `peak_period` — Binary indicator ($1$ during 12:00–15:00 and 19:00–22:00, else $0$).
-5. $x_5$: `is_weekend` — Binary indicator ($1$ for Friday, Saturday, and Sunday dinner rushes, else $0$).
+Where x represents the 5 operational kitchen features:
+1. **x1 (Item Count):** Total quantity of dishes in the ticket.
+2. **x2 (Complexity Points):** Sum of recipe complexity scores on a 1-to-5 scale (for example, "Double Ka Meetha" has complexity 1, whereas slow hand-pounded "Mutton Haleem" has complexity 5).
+3. **x3 (Queue Depth):** Number of concurrent active orders currently in `RECEIVED`, `ACCEPTED`, or `PREPARING` stages at that specific outlet.
+4. **x4 (Peak Period):** Binary rush indicator (1 during lunch 12:00-15:00 and dinner 19:00-22:00; 0 otherwise).
+5. **x5 (Weekend Indicator):** Binary indicator (1 for Friday, Saturday, and Sunday dinner rushes; 0 otherwise).
 
 ### 5.2 Analytical Ridge Closed-Form Solution
-$$w = (X^T X + \lambda I')^{-1} X^T y$$
-Where $\lambda = 1.0$, and $I'$ is the identity matrix with $I'_{00} = 0$. Solved with Gauss-Jordan elimination with partial pivoting.
+The model computes regression weights deterministically via the penalized normal equations without stochastic gradient variance:
+```text
+Weights: w = inv( X^T . X + lambda . I' ) . X^T . y
+```
+Where regularization parameter `lambda = 1.0`, and `I'` is the identity matrix with `I'[0,0] = 0` (leaving the bias term unpenalized). The matrix inversion is computed using Gauss-Jordan elimination with partial numerical pivoting.
 
 ### 5.3 Model Safeguards & Honest Promises
-- **Honest Floor:** Promised Time = $\max(\text{Outlet Minimum Prep}, \text{Predicted Time} + \lceil\text{MAE}/2\rceil)$.
-- **Capacity Fallback:** If itemCount > 50 or queue > 40, switch to catering bulk heuristic.
-- **Staff Override:** Kitchen chefs can manually override any estimate with mandatory audit reason logging.
-- **Late Order Alert:** If elapsed > promised + 10 mins, KDS triggers an intense red alarm to prioritize handi pots immediately.
-- **AI Reorders:** Reorder suggestions never add items automatically without explicit customer confirmation.
+- **Honest Floor Safeguard:** Promised Time = MAX( Outlet Minimum Prep Time, Predicted Time + ceil(MAE / 2) ). The customer promised time is never lower than the outlet's minimum preparation floor.
+- **Capacity Fallback:** If ticket item count exceeds 50 or kitchen queue exceeds 40 active handis, the system switches to a conservative catering bulk heuristic (1.5x buffer) and flags the ticket.
+- **Staff Override with Audit Log:** Kitchen leads can manually adjust prep times directly from the KDS screen with mandatory reason logging (`CHEF_ADJUSTMENT`, `RUSH_HOUR`, `EQUIPMENT_MAINTENANCE`).
+- **Late Order Escalation (>10m Alert):** If an order's elapsed time exceeds the promised time by 10 minutes or more, the KDS pulses a high-visibility crimson alert and dispatches customer notification updates.
+- **Non-Intrusive Reorders:** AI reorder suggestions from customer order history provide quick-action prompts but never inject items into the cart without explicit customer tap.
 
 ---
 

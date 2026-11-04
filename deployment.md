@@ -1,5 +1,7 @@
 # Deployment & Operations Guide — DumHouse Platform
 
+> **Live Application URL:** [https://restaurant-ordering-kitchen-display-two.vercel.app](https://restaurant-ordering-kitchen-display-two.vercel.app)  
+> **GitHub Repository:** [https://github.com/NamanBhatia-NB/Restaurant_Ordering_Kitchen_Display_System](https://github.com/NamanBhatia-NB/Restaurant_Ordering_Kitchen_Display_System)  
 > **System:** Direct Food-Ordering Website with Real-Time Kitchen Display System (KDS) & AI Prep-Time Predictor  
 > **Client:** Company A, Hyderabad (14 Outlets & 3 Cloud Kitchens)  
 > **Prepared For:** Isocode Engineering Evaluation  
@@ -35,8 +37,8 @@ Ensure your host machine has the following tools installed:
 
 ### Step 3.1: Clone the Repository
 ```bash
-git clone https://github.com/naman-isocode/dumhouse-platform.git
-cd dumhouse-platform
+git clone https://github.com/NamanBhatia-NB/Restaurant_Ordering_Kitchen_Display_System.git
+cd Restaurant_Ordering_Kitchen_Display_System
 ```
 
 ### Step 3.2: Install Dependencies
@@ -55,11 +57,11 @@ cp .env.example .env.local
 > The application is architected with a resilient built-in local persistence engine and deterministic in-memory database pre-seeded with the exact assessment orders (`WEB-778120`, `WEB-778131`, `WEB-778146`), 3 Hyderabad outlets, and authentic menu items. You can leave Supabase variables empty for immediate local testing without any external cloud service blockers!
 
 ### Step 3.4: Run Automated Verification Tests
-Verify all 13 unit tests covering the AI Ridge Regression model, state-machine transitions, and pricing integrity:
+Verify all 14 unit tests covering the AI Ridge Regression model, state-machine transitions, and pricing integrity:
 ```bash
 npm run test
 ```
-*Expected Result: 2 test files passed, 13 tests passed.*
+*Expected Result: 2 test files passed, 14 tests passed.*
 
 ### Step 3.5: Start Development Server
 ```bash
@@ -83,7 +85,7 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser.
    - Enables the Supabase Realtime publication for `orders` and `order_events`.
 
 ### Step 4.2: Deploying to Vercel
-1. Push your Git repository to GitHub or GitLab.
+1. Push your Git repository to GitHub.
 2. Log into [Vercel](https://vercel.com) and click **"Add New Project"** ➔ **"Import Git Repository"**.
 3. Select Framework Preset: **Next.js**.
 4. In the **Environment Variables** section, configure the required variables (names listed below).
@@ -98,9 +100,9 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser.
 | Variable Name | Environment | Description |
 | :--- | :--- | :--- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Client & Server | Project API URL from Supabase dashboard (HTTPS) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Client & Server | Anonymous public API key for browser client queries |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Client & Server | Anonymous public API key (or publishable key) for browser client queries |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-Only | Privileged admin key for server actions & migration scripts (Never prefix with `NEXT_PUBLIC_`) |
-| `NEXT_PUBLIC_APP_URL` | Client & Server | Canonical URL of the application (e.g. `https://dumhouse-platform.vercel.app`) |
+| `NEXT_PUBLIC_APP_URL` | Client & Server | Canonical live URL of the application (`https://restaurant-ordering-kitchen-display-two.vercel.app`) |
 | `NODE_ENV` | Build & Runtime | Set to `production` in production deployment |
 
 ---

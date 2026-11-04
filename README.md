@@ -7,8 +7,8 @@
 
 ## 🔗 Repository & Live Deployment Links
 
-- **GitHub Repository:** `https://github.com/naman-isocode/dumhouse-platform` *(Place actual repository URL here before final submission)*
-- **Live Deployed Application:** `https://dumhouse-platform.vercel.app` *(Place production Vercel/Supabase URL here)*
+- **GitHub Repository:** `https://github.com/NamanBhatia-NB/Restaurant_Ordering_Kitchen_Display_System`
+- **Live Deployed Application:** `https://restaurant-ordering-kitchen-display-two.vercel.app`
 
 ---
 
@@ -71,7 +71,7 @@ The application includes a floating **Reviewer Mode Switcher** at the top of eve
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/naman-isocode/dumhouse-platform.git
+git clone https://github.com/NamanBhatia-NB/Restaurant_Ordering_Kitchen_Display_System.git
 cd dumhouse-platform
 
 # 2. Install dependencies

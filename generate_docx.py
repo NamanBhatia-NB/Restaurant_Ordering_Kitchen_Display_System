@@ -15,6 +15,7 @@ def sanitize(text: str) -> str:
     text = text.replace("—", "--")
     text = text.replace("✓", "[PASS]")
     text = text.replace("λ", "lambda")
+    text = text.replace("•", "*")
     text = text.replace("→", "->")
     return text
 
@@ -32,6 +33,22 @@ def set_cell_margins(cell, top=80, bottom=80, left=100, right=100):
         tcMar.append(node)
     tcPr.append(tcMar)
 
+def add_formatted_text(p, text):
+    parts = re.split(r'(\*\*.*?\*\*|\*.*?\*|`.*?`)', text)
+    for part in parts:
+        if part.startswith("**") and part.endswith("**"):
+            run = p.add_run(part[2:-2])
+            run.bold = True
+        elif part.startswith("*") and part.endswith("*"):
+            run = p.add_run(part[1:-1])
+            run.italic = True
+        elif part.startswith("`") and part.endswith("`"):
+            run = p.add_run(part[1:-1])
+            run.font.name = "Consolas"
+            run.font.size = Pt(8.5)
+        else:
+            p.add_run(part)
+
 def create_document():
     doc = Document()
 
@@ -46,7 +63,6 @@ def create_document():
     # Styles
     terracotta_rgb = RGBColor(217, 83, 30)
     charcoal_rgb = RGBColor(28, 25, 23)
-    muted_rgb = RGBColor(120, 113, 108)
 
     with open("Technical-Design-Document.md", "r", encoding="utf-8") as f:
         lines = f.readlines()
@@ -83,6 +99,7 @@ def create_document():
                     val = r_data[col_idx] if col_idx < len(r_data) else ""
                     clean_val = re.sub(r'\*\*(.*?)\*\*', r'\1', val)
                     clean_val = re.sub(r'`(.*?)`', r'\1', clean_val)
+                    clean_val = re.sub(r'\*([^*]+)\*', r'\1', clean_val)
                     
                     cell.text = clean_val
                     set_cell_margins(cell, top=70, bottom=70, left=90, right=90)
@@ -186,18 +203,7 @@ def create_document():
             p = doc.add_paragraph(style='List Bullet')
             p.paragraph_format.space_before = Pt(1)
             p.paragraph_format.space_after = Pt(2)
-            content = stripped[2:]
-            parts = re.split(r'(\*\*.*?\*\*|`.*?`)', content)
-            for part in parts:
-                if part.startswith("**") and part.endswith("**"):
-                    run = p.add_run(part[2:-2])
-                    run.bold = True
-                elif part.startswith("`") and part.endswith("`"):
-                    run = p.add_run(part[1:-1])
-                    run.font.name = "Consolas"
-                    run.font.size = Pt(8.5)
-                else:
-                    p.add_run(part)
+            add_formatted_text(p, stripped[2:])
             continue
 
         num_match = re.match(r'^(\d+\.)\s+(.*)', stripped)
@@ -208,35 +214,14 @@ def create_document():
             p.paragraph_format.space_after = Pt(2)
             run_num = p.add_run(f"{num_match.group(1)} ")
             run_num.bold = True
-            content = num_match.group(2)
-            parts = re.split(r'(\*\*.*?\*\*|`.*?`)', content)
-            for part in parts:
-                if part.startswith("**") and part.endswith("**"):
-                    run = p.add_run(part[2:-2])
-                    run.bold = True
-                elif part.startswith("`") and part.endswith("`"):
-                    run = p.add_run(part[1:-1])
-                    run.font.name = "Consolas"
-                    run.font.size = Pt(8.5)
-                else:
-                    p.add_run(part)
+            add_formatted_text(p, num_match.group(2))
             continue
 
         if stripped:
             p = doc.add_paragraph()
             p.paragraph_format.space_before = Pt(1)
             p.paragraph_format.space_after = Pt(3)
-            parts = re.split(r'(\*\*.*?\*\*|`.*?`)', stripped)
-            for part in parts:
-                if part.startswith("**") and part.endswith("**"):
-                    run = p.add_run(part[2:-2])
-                    run.bold = True
-                elif part.startswith("`") and part.endswith("`"):
-                    run = p.add_run(part[1:-1])
-                    run.font.name = "Consolas"
-                    run.font.size = Pt(8.5)
-                else:
-                    p.add_run(part)
+            add_formatted_text(p, stripped)
 
     if in_table:
         flush_table()
